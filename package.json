@@ -10,6 +10,7 @@
     "@fastify/deepmerge": "^2.0.0",
     "@fastify/error": "^4.0.0",
     "fastify-plugin": "^4.0.0",
+    "graphql-upload-minimal": "^1.6.1",
     "secure-json-parse": "^2.4.0",
     "stream-wormhole": "^1.1.0"
   },

@@ -27,9 +27,18 @@ const InvalidMultipartContentTypeError = createError('FST_INVALID_MULTIPART_CONT
 const InvalidJSONFieldError = createError('FST_INVALID_JSON_FIELD_ERROR', 'a request field is not a valid JSON as declared by its Content-Type', 406)
 const FileBufferNotFoundError = createError('FST_FILE_BUFFER_NOT_FOUND', 'the file buffer was not found', 500)
 const NoFormData = createError('FST_NO_FORM_DATA', 'FormData is not available', 500)
+const stream = require('stream')
+const { processRequest, UploadOptions } = require('graphql-upload-minimal')
+
+const finishedStream = util.promisify(stream.finished)
 
 function setMultipart (req, payload, done) {
-  req[kMultipart] = true
+  console.log({req, payload, url: req.url })
+  if (req.url == '/graphql') {
+    req.mercuriusUploadMultipart = true
+  } else {
+    req[kMultipart] = true
+  }
   done()
 }
 
@@ -69,6 +78,11 @@ function fastifyMultipart (fastify, options, done) {
     }
 
     fastify.addHook('preValidation', async function (req, reply) {
+      if (req.mercuriusUploadMultipart) {
+        req.body = await processRequest(req.raw, reply.raw, options)
+        return;
+      }
+
       if (!req.isMultipart()) {
         return
       }
@@ -123,6 +137,14 @@ function fastifyMultipart (fastify, options, done) {
 
         req.body = body
       }
+    })
+
+    fastify.addHook('onSend', async function (request) {
+      if (!request.mercuriusUploadMultipart) {
+        return
+      }
+
+      await finishedStream(request.raw)
     })
 
     // The following is not available on old Node.js versions
