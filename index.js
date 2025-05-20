@@ -33,7 +33,6 @@ const { processRequest, UploadOptions } = require('graphql-upload-minimal')
 const finishedStream = util.promisify(stream.finished)
 
 function setMultipart (req, payload, done) {
-  console.log({req, payload, url: req.url })
   if (req.url == '/graphql') {
     req.mercuriusUploadMultipart = true
   } else {

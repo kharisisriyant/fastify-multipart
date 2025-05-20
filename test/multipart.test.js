@@ -76,6 +76,66 @@ test('should parse forms', function (t) {
   })
 })
 
+test('should not parse forms if graphql', function (t) {
+  t.plan(9)
+
+  const fastify = Fastify()
+  t.teardown(fastify.close.bind(fastify))
+
+  fastify.register(multipart)
+
+  fastify.post('/graphql', async function (req, reply) {
+    for await (const part of req.parts()) {
+      if (part.file) {
+        t.equal(part.type, 'file')
+        t.equal(part.fieldname, 'upload')
+        t.equal(part.filename, 'README.md')
+        t.equal(part.encoding, '7bit')
+        t.equal(part.mimetype, 'text/markdown')
+        t.ok(part.fields.upload)
+
+        const original = fs.readFileSync(filePath, 'utf8')
+        await pump(
+          part.file,
+          concat(function (buf) {
+            t.equal(1, 1)
+          })
+        )
+      }
+    }
+
+    reply.code(200).send()
+  })
+
+  fastify.listen({ port: 0 }, async function () {
+    // request
+    const form = new FormData()
+    const opts = {
+      protocol: 'http:',
+      hostname: 'localhost',
+      port: fastify.server.address().port,
+      path: '/graphql',
+      headers: form.getHeaders(),
+      method: 'POST'
+    }
+
+    const req = http.request(opts, (res) => {
+      t.equal(res.statusCode, 406)
+      // consume all data without processing
+      res.resume()
+      res.on('end', () => {
+        t.pass('res ended successfully')
+      })
+    })
+    const rs = fs.createReadStream(filePath)
+    form.append('upload', rs)
+    form.append('hello', 'world')
+    form.append('willbe', 'dropped')
+
+    form.pipe(req)
+  })
+})
+
 test('should respond when all files are processed', function (t) {
   t.plan(6)
 
